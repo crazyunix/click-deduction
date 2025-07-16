@@ -58,6 +58,11 @@ func InitDeductionPlan(rdb *redis.Client, adGroupID string, ratio int, groupSize
 func UpdateDeductionPlan(rdb *redis.Client, adGroupID string, ratio int, groupSize int) error {
 	// 删除所有的 key
 	ratioKey, indexKey, indexesKey := getRedisKeys(adGroupID)
+	// 获取当前的扣量策略
+	oldRatio := rdb.Get(ctx, ratioKey).Val()
+	if oldRatio == fmt.Sprintf("%d", ratio) {
+		return nil
+	}
 	rdb.Del(ctx, ratioKey, indexKey, indexesKey)
 	return InitDeductionPlan(rdb, adGroupID, ratio, groupSize)
 }
