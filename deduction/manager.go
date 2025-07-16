@@ -54,6 +54,14 @@ func InitDeductionPlan(rdb *redis.Client, adGroupID string, ratio int, groupSize
 	return err
 }
 
+// 更新某个广告组的扣量策略
+func UpdateDeductionPlan(rdb *redis.Client, adGroupID string, ratio int, groupSize int) error {
+	// 删除所有的 key
+	ratioKey, indexKey, indexesKey := getRedisKeys(adGroupID)
+	rdb.Del(ctx, ratioKey, indexKey, indexesKey)
+	return InitDeductionPlan(rdb, adGroupID, ratio, groupSize)
+}
+
 // 判断当前点击是否需要回传
 func ShouldReport(rdb *redis.Client, adGroupID string, groupSize int) (bool, error) {
 	_, indexKey, indexesKey := getRedisKeys(adGroupID)
