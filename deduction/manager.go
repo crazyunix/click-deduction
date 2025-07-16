@@ -1,0 +1,84 @@
+package deduction
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"math/rand"
+	"time"
+
+	"github.com/redis/go-redis/v9"
+)
+
+var ctx = context.Background()
+
+// 生成需要回传的索引
+func generateIndexesToReport(ratio int, groupSize int) []int {
+	keepCount := groupSize * (100 - ratio) / 100
+	all := rand.New(rand.NewSource(time.Now().UnixNano())).Perm(groupSize)
+	return all[:keepCount]
+}
+
+// 获取redis key
+func getRedisKeys(adGroupID string) (ratioKey, indexKey, indexesKey string) {
+	prefix := fmt.Sprintf("deduct:%s", adGroupID)
+	return prefix + ":ratio", prefix + ":index", prefix + ":indexes"
+}
+
+// 从redis读取扣量策略
+func getRedisDeductData(rdb *redis.Client, key string) []int {
+	data, err := rdb.Get(ctx, key).Bytes()
+	if err != nil {
+		return nil
+	}
+	var reportIndexes []int
+	if err := json.Unmarshal(data, &reportIndexes); err != nil {
+		return nil
+	}
+	return reportIndexes
+}
+
+// 初始化或更新某个广告组的扣量策略
+func InitDeductionPlan(rdb *redis.Client, adGroupID string, ratio int, groupSize int) error {
+	ratioKey, indexKey, indexesKey := getRedisKeys(adGroupID)
+	indexes := getRedisDeductData(rdb, indexesKey)
+	if indexes == nil {
+		indexes = generateIndexesToReport(ratio, groupSize)
+	}
+	data, _ := json.Marshal(indexes)
+	pipe := rdb.TxPipeline()
+	pipe.Set(ctx, ratioKey, ratio, 0)
+	pipe.Set(ctx, indexesKey, data, 0)
+	pipe.Set(ctx, indexKey, 0, 0)
+	_, err := pipe.Exec(ctx)
+	return err
+}
+
+// 判断当前点击是否需要回传
+func ShouldReport(rdb *redis.Client, adGroupID string, groupSize int) (bool, error) {
+	_, indexKey, indexesKey := getRedisKeys(adGroupID)
+
+	// 当前点击计数器自增
+	index, err := rdb.Incr(ctx, indexKey).Result()
+	if err != nil {
+		return false, err
+	}
+	groupIndex := int((index - 1) % int64(groupSize))
+
+	// 读取当前的回传索引数组
+	indexData, err := rdb.Get(ctx, indexesKey).Bytes()
+	if err != nil {
+		return false, err
+	}
+	var reportIndexes []int
+	if err := json.Unmarshal(indexData, &reportIndexes); err != nil {
+		return false, err
+	}
+
+	for _, idx := range reportIndexes {
+		if groupIndex == idx {
+			return true, nil
+		}
+	}
+	return false, nil
+}
