@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"math/rand"
 	"time"
 
 	"github.com/redis/go-redis/v9"
@@ -14,9 +13,10 @@ var ctx = context.Background()
 
 // 生成需要回传的索引
 func generateIndexesToReport(ratio int, groupSize int) []int {
-	keepCount := groupSize * (100 - ratio) / 100
-	all := rand.New(rand.NewSource(time.Now().UnixNano())).Perm(groupSize)
-	return all[:keepCount]
+	seed := time.Now().UnixNano()
+	target := groupSize * (100 - ratio) / 100
+	result, _, _ := generateRandomByTarget(groupSize, target, seed)
+	return result
 }
 
 // 获取redis key
