@@ -87,7 +87,9 @@ func ShouldReport(rdb *redis.Client, adGroupID string, groupSize int) (bool, err
 	if err := json.Unmarshal(indexData, &reportIndexes); err != nil {
 		return false, err
 	}
-
+	if len(reportIndexes) == 0 {
+		return false, nil
+	}
 	for _, idx := range reportIndexes {
 		if groupIndex == idx {
 			return true, nil
