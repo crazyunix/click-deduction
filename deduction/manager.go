@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"slices"
 	"time"
 
 	"github.com/redis/go-redis/v9"
@@ -40,7 +41,7 @@ func getRedisDeductData(rdb *redis.Client, key string) []int {
 
 // 初始化或更新某个广告组的扣量策略
 func InitDeductionPlan(rdb *redis.Client, adGroupID string, ratio int, groupSize int) error {
-	ratioKey, indexKey, indexesKey := getRedisKeys(adGroupID)
+	ratioKey, _, indexesKey := getRedisKeys(adGroupID)
 	indexes := getRedisDeductData(rdb, indexesKey)
 	if indexes == nil {
 		indexes = generateIndexesToReport(ratio, groupSize)
@@ -49,7 +50,6 @@ func InitDeductionPlan(rdb *redis.Client, adGroupID string, ratio int, groupSize
 	pipe := rdb.TxPipeline()
 	pipe.Set(ctx, ratioKey, ratio, 0)
 	pipe.Set(ctx, indexesKey, data, 0)
-	pipe.Set(ctx, indexKey, 0, 0)
 	_, err := pipe.Exec(ctx)
 	return err
 }
@@ -90,10 +90,6 @@ func ShouldReport(rdb *redis.Client, adGroupID string, groupSize int) (bool, err
 	if len(reportIndexes) == 0 {
 		return false, nil
 	}
-	for _, idx := range reportIndexes {
-		if groupIndex == idx {
-			return true, nil
-		}
-	}
-	return false, nil
+	deduct := slices.Contains(reportIndexes, groupIndex)
+	return deduct, nil
 }
