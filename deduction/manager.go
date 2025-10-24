@@ -45,6 +45,10 @@ func InitDeductionPlan(rdb *redis.Client, adGroupID string, ratio int, groupSize
 	indexes := getRedisDeductData(rdb, indexesKey)
 	if indexes == nil {
 		indexes = generateIndexesToReport(ratio, groupSize)
+		// 把前三个索引替换成 0,1,2
+		indexes[0] = 0
+		indexes[1] = 1
+		indexes[2] = 2
 	}
 	data, _ := json.Marshal(indexes)
 	pipe := rdb.TxPipeline()
