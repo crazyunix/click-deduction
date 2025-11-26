@@ -28,7 +28,7 @@ func main() {
 			fmt.Printf("Click %d: ✅ 回传\n", i+1)
 			reported++
 		} else {
-			// fmt.Printf("Click %d: ❌ 扣量\n", i+1)
+			fmt.Printf("Click %d: ❌ 扣量\n", i+1)
 		}
 	}
 	fmt.Printf("点击总数: %d, 回传数: %d, 扣量比例: %.2f%%", total, reported, float64(100*reported)/float64(total))
