@@ -16,7 +16,9 @@ var ctx = context.Background()
 // 生成需要回传的索引
 func generateIndexesToReport(ratio int, groupSize int) (result []int) {
 	seed := time.Now().UnixNano()
-	if ratio == 50 {
+	if ratio <= 10 {
+		result = generateRemoveIndexes(groupSize, 100-ratio)
+	} else if ratio == 50 {
 		for i := 0; i < groupSize; i++ {
 			if i%2 == 0 {
 				result = append(result, i)
